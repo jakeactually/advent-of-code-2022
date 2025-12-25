@@ -8,9 +8,8 @@ data Move = Move Direction Int deriving (Show, Eq)
 type Pos = (Int, Int)
 
 data State = State
-    { headPos  :: Pos
-    , tailPos  :: Pos
-    , visited  :: Set.Set Pos
+    { knots   :: [Pos]  -- 10 knots: head is first, tail is last
+    , visited :: Set.Set Pos
     } deriving (Show)
 
 parseDirection :: Char -> Direction
@@ -51,22 +50,31 @@ normalize n
     | n < 0     = -1
     | otherwise = 0
 
--- Move tail towards head (normalized step)
-moveTailTowards :: Pos -> Pos -> Pos
-moveTailTowards (hx, hy) (tx, ty) = (tx + dx, ty + dy)
+-- Move follower towards leader (normalized step)
+moveTowards :: Pos -> Pos -> Pos
+moveTowards (lx, ly) (fx, fy) = (fx + dx, fy + dy)
   where
-    dx = normalize (hx - tx)
-    dy = normalize (hy - ty)
+    dx = normalize (lx - fx)
+    dy = normalize (ly - fy)
 
--- Process a single step: move head, then possibly move tail
-stepOnce :: Direction -> State -> State
-stepOnce dir state = State newHead newTail newVisited
+-- Update the chain of knots: given a moved leader, propagate through followers
+propagateKnots :: [Pos] -> [Pos]
+propagateKnots [] = []
+propagateKnots [k] = [k]
+propagateKnots (leader:follower:rest) = leader : propagateKnots (newFollower : rest)
   where
-    newHead = addPos (headPos state) (dirDelta dir)
-    newTail = if isAdjacent newHead (tailPos state)
-              then tailPos state
-              else moveTailTowards newHead (tailPos state)
-    newVisited = Set.insert newTail (visited state)
+    newFollower = if isAdjacent leader follower
+                  then follower
+                  else moveTowards leader follower
+
+-- Process a single step: move head, then propagate through all knots
+stepOnce :: Direction -> State -> State
+stepOnce dir state = State newKnots newVisited
+  where
+    oldKnots = knots state
+    movedHead = addPos (head oldKnots) (dirDelta dir)
+    newKnots = propagateKnots (movedHead : tail oldKnots)
+    newVisited = Set.insert (last newKnots) (visited state)
 
 -- Process a single move instruction (multiple steps)
 processMove :: State -> Move -> State
@@ -76,7 +84,8 @@ processMove state (Move dir steps) = iterate (stepOnce dir) state !! steps
 processMoves :: [Move] -> State
 processMoves = foldl processMove initialState
   where
-    initialState = State (0, 0) (0, 0) (Set.singleton (0, 0))
+    initialKnots = replicate 10 (0, 0)  -- 10 knots all starting at origin
+    initialState = State initialKnots (Set.singleton (0, 0))
 
 main :: IO ()
 main = do
