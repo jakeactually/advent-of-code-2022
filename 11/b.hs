@@ -1,42 +1,79 @@
-import System.IO (readFile)
-import Data.List (unfoldr)
+import Data.Text (pack, unpack, splitOn, strip)
+import Data.List (drop, sort)
 
-data Instr = Noop | Addx1 | Addx2 Int deriving (Show, Eq)
+data Op = Add Int | Mul Int | Sq deriving Show
 
-parseLine :: String -> [Instr]
-parseLine s = case words s of
-  ["noop"] -> [Noop]
-  ["addx", n] -> [Addx1, Addx2 (read n)]
-  _ -> error ("Invalid instruction: " ++ s)
+data Monkey = Monkey {
+  monkeyIndex :: Int,
+  items :: [Int],
+  operation :: Op,
+  testDiv :: Int,
+  trueTarget :: Int,
+  falseTarget :: Int,
+  inspectionCount :: Int
+} deriving Show
 
-parse :: String -> [Instr]
-parse = concatMap parseLine . lines
+applyOp :: Op -> Int -> Int
+applyOp (Add x) old = old + x
+applyOp (Mul x) old = old * x
+applyOp Sq old = old * old
 
-parseFile :: FilePath -> IO [Instr]
-parseFile path = parse <$> readFile path
-
-instrValue :: Instr -> Int
-instrValue Noop      = 0
-instrValue Addx1     = 0
-instrValue (Addx2 n) = n
-
-evaluate :: [Instr] -> [Bool]
-evaluate instrs = go 0 1 instrs []
+parseMonkey :: String -> Monkey
+parseMonkey text = Monkey index items op testDiv trueTarget falseTarget 0
   where
-    go :: Int -> Int -> [Instr] -> [Bool] -> [Bool]
-    go _ _ [] acc = reverse acc
-    go idx x (i:is) acc =
-      let midx = idx `mod` 40
-          flag = abs (x - midx) <= 1
-          x' = x + instrValue i
-      in go (idx + 1) x' is (flag : acc)
+    (indexLine : itemsLine : opLine : testLine : trueLine : falseLine : _) = map unpack $ splitOn (pack "\n") (pack text)
+    index = read $ takeWhile (/= ':') $ drop 7 indexLine  -- "Monkey 0:"
+    itemsStr = drop 18 itemsLine  -- "  Starting items: "
+    items = map read $ words $ map (\c -> if c == ',' then ' ' else c) itemsStr
+    opStr = drop 19 opLine  -- "  Operation: new = "
+    op = parseOp opStr
+    testDiv = read $ drop 21 testLine  -- "  Test: divisible by "
+    trueTarget = read $ drop 29 trueLine  -- "    If true: throw to monkey "
+    falseTarget = read $ drop 30 falseLine  -- "    If false: throw to monkey "
 
-chunk :: Int -> [a] -> [[a]]
-chunk n = takeWhile (not . null) . unfoldr (Just . splitAt n)
+parseOp :: String -> Op
+parseOp s = case words s of
+  ["old", "+", x] -> Add (read x)
+  ["old", "*", "old"] -> Sq
+  ["old", "*", x] -> Mul (read x)
+  _ -> error $ "Invalid op: " ++ s
+
+updateAt :: Int -> (a -> a) -> [a] -> [a]
+updateAt idx f xs = take idx xs ++ [f (xs !! idx)] ++ drop (idx + 1) xs
+
+processItem :: Int -> Monkey -> Int -> (Int, Int)
+processItem modVal m item = (target, newWorry)
+  where newWorry = applyOp (operation m) item `mod` modVal
+        target = if newWorry `mod` testDiv m == 0 then trueTarget m else falseTarget m
+
+processMonkey :: Int -> [Monkey] -> Int -> [Monkey]
+processMonkey modVal ms i = ms''
+  where m = ms !! i
+        processed = length (items m)
+        throws = map (processItem modVal m) (items m)
+        ms' = foldl (\acc (t, item) -> updateAt t (\m' -> m' { items = items m' ++ [item] }) acc) ms throws
+        ms'' = updateAt i (\m' -> m' { items = [], inspectionCount = inspectionCount m' + processed }) ms'
+
+simulateRound :: Int -> [Monkey] -> [Monkey]
+simulateRound modVal monkeys = foldl (processMonkey modVal) monkeys [0..length monkeys - 1]
+
+simulateRoundsIO :: Int -> Int -> [Monkey] -> IO [Monkey]
+simulateRoundsIO _ 0 ms = return ms
+simulateRoundsIO modVal n ms = do
+  let newMs = simulateRound modVal ms
+  putStrLn $ "After round " ++ show (10001 - n) ++ ":"
+  mapM_ (\m -> putStrLn $ "Monkey " ++ show (monkeyIndex m) ++ ": " ++ show (inspectionCount m) ++ " inspections, items: " ++ show (items m)) newMs
+  simulateRoundsIO modVal (n-1) newMs
 
 main :: IO ()
 main = do
-  instrs <- parseFile "input.txt"
-  let pixels = evaluate instrs
-      rows = chunk 40 pixels
-  mapM_ (putStrLn . map (\b -> if b then '#' else '.')) rows
+  content <- readFile "input.txt"
+  let chunks = splitOn (pack "\n\n") (pack content)
+  let monkeys = map (parseMonkey . unpack . strip) chunks
+  let divs = map testDiv monkeys
+  let lcmDivs = foldl1 lcm divs
+  print lcmDivs
+  finalMonkeys <- simulateRoundsIO lcmDivs 10000 monkeys
+  let counts = sort $ map inspectionCount finalMonkeys
+  let answer = product $ take 2 $ reverse counts
+  print answer
