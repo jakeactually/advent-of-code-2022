@@ -1,6 +1,5 @@
 import Text.Parsec
 import Text.Parsec.String (Parser)
-import Debug.Trace (trace)
 
 data Node = IntNode Int | ListNode [Node]
   deriving (Show, Eq)
