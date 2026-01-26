@@ -44,6 +44,48 @@ printMap ((minX, minY), (maxX, maxY)) grid = unlines [row y | y <- [minY..maxY]]
   where
     row y = [Map.findWithDefault '.' (x, y) grid | x <- [minX..maxX]]
 
+-- Simulate sand falling from a point
+simulateSand :: Point -> Int -> Map.Map Point Char -> Map.Map Point Char
+simulateSand source targetX grid = dropSandLoop grid 0
+  where
+    dropSandLoop :: Map.Map Point Char -> Int -> Map.Map Point Char
+    dropSandLoop currentGrid count = 
+      case dropSingleSand source currentGrid of
+        Nothing -> currentGrid  -- Sand fell off the map
+        Just newGrid -> if any (\(x, _) -> x == targetX) (Map.keys newGrid)
+                        then newGrid  -- Sand reached x=367
+                        else dropSandLoop newGrid (count + 1)
+
+-- Drop a single sand grain
+dropSingleSand :: Point -> Map.Map Point Char -> Maybe (Map.Map Point Char)
+dropSingleSand startPos grid = case findSandRestPosition startPos grid of
+  Nothing -> Nothing  -- Sand fell off the map
+  Just restPos -> Just $ Map.insert restPos 'o' grid
+
+-- Find where a sand grain comes to rest
+findSandRestPosition :: Point -> Map.Map Point Char -> Maybe Point
+findSandRestPosition (x, y) grid
+  | y > maxY = Nothing  -- Sand fell off the map
+  | otherwise = case findNextPosition (x, y) grid of
+      Nothing -> Just (x, y)  -- Sand comes to rest here
+      Just nextPos -> findSandRestPosition nextPos grid
+  where
+    (_, (_, maxY)) = findBounds (Map.keys grid)
+
+-- Find next position for sand
+findNextPosition :: Point -> Map.Map Point Char -> Maybe Point
+findNextPosition (x, y) grid = 
+  let down = (x, y + 1)
+      downLeft = (x - 1, y + 1)
+      downRight = (x + 1, y + 1)
+  in if not (Map.member down grid)
+     then Just down
+     else if not (Map.member downLeft grid)
+          then Just downLeft
+          else if not (Map.member downRight grid)
+               then Just downRight
+               else Nothing
+
 main :: IO ()
 main = do
   content <- readFile "input.txt"
@@ -51,10 +93,14 @@ main = do
       paths = map parsePath lines'
       allPoints = concatMap generatePathPoints paths
       bounds = findBounds allPoints
-      grid = createMap allPoints
-      output = printMap bounds grid
+      initialGrid = createMap allPoints
+      -- Add the starting point at y=0, x=500
+      gridWithStart = Map.insert (500, 0) 'S' initialGrid
+      -- Simulate sand falling from (500, 0) until reaching x=367
+      finalGrid = simulateSand (500, 0) 367 gridWithStart
+      sandGrains = length $ filter (== 'o') $ Map.elems finalGrid
+      output = printMap bounds finalGrid
   
   print bounds
-  putStrLn "Map with path points filled with '#':"
   putStr output
-  putStrLn $ "Total points filled: " ++ show (length allPoints)
+  putStrLn $ "Total sand grains that came to rest: " ++ show sandGrains
