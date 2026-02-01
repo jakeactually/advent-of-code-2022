@@ -23,6 +23,10 @@ dependencies:
 - base >= 4.7 && < 5
 - text
 - directory
+- array
+- containers
+- parsec
+- mtl
 
 ghc-options:
 - -Wall
