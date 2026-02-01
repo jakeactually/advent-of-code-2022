@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+module Day01.A where
+
 import Data.Text (pack, splitOn, unpack)
 
 main :: IO ()
