@@ -1,11 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module Day14.A where
 
-import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Data.List (foldl')
-import Data.Char (toLower)
 
 -- Point type
 type Point = (Int, Int)

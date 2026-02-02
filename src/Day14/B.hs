@@ -1,11 +1,10 @@
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 module Day14.B where
 
-import Control.Monad (forM_, when, unless)
+import Control.Monad (forM_, unless)
 import Control.Monad.ST
 import Data.Array.ST
 import Data.Array.Unboxed
-import Data.Array.MArray
-import Data.List (foldl')
 import Data.STRef
 
 -- Point type
@@ -41,12 +40,12 @@ findBounds points = let xs = map fst points
 
 solve :: [Point] -> (Int, UArray Point Char)
 solve points = runST $ do
-    let ((minX_rocks, minY_rocks), (maxX_rocks, maxY_rocks)) = findBounds points
+    let ((minX_rocks, _), (maxX_rocks, maxY_rocks)) = findBounds points
     let floorY = maxY_rocks + 2
     -- Sand starts at 500,0. Max spread is floorY.
     -- So range [500 - floorY - 2, 500 + floorY + 2] covers all reachable points.
-    let minX = minimum [minX_rocks, 500 - floorY - 2]
-    let maxX = maximum [maxX_rocks, 500 + floorY + 2]
+    let minX = min minX_rocks (500 - floorY - 2)
+    let maxX = max maxX_rocks (500 + floorY + 2)
     let minY = 0
     let maxY = floorY
     
@@ -69,9 +68,7 @@ solve points = runST $ do
                 Just p -> do
                     writeArray grid p 'o'
                     modifySTRef' countRef (+1)
-                    if p == (500, 0)
-                        then return ()
-                        else loop
+                    unless (p == (500, 0)) loop
     
     loop
     

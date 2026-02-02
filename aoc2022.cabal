@@ -54,6 +54,8 @@ library
       Day13.B
       Day14.A
       Day14.B
+      Day15.A
+      Day15.B
       Lib
   other-modules:
       Paths_aoc2022
@@ -69,6 +71,7 @@ library
     , directory
     , mtl
     , parsec
+    , regex-pcre
     , text
   default-language: Haskell2010
 
@@ -89,6 +92,7 @@ executable aoc2022-exe
     , directory
     , mtl
     , parsec
+    , regex-pcre
     , text
   default-language: Haskell2010
 
@@ -110,5 +114,6 @@ test-suite aoc2022-test
     , directory
     , mtl
     , parsec
+    , regex-pcre
     , text
   default-language: Haskell2010
