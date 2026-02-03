@@ -17,7 +17,7 @@ main = do
     print $ sumDistancesWrapper limits
 
 sensorsAndBeacons :: String -> [((Int, Int), (Int, Int))]
-sensorsAndBeacons = map (listTo2Pairs . map read . getAllTextMatches . (=~ "[0-9]+")) . lines
+sensorsAndBeacons = map (listTo2Pairs . map read . getAllTextMatches . (=~ "-?[0-9]+")) . lines
     where
         listTo2Pairs [sx, sy, bx, by] = ((sx, sy), (bx, by))
         listTo2Pairs _ = error "Unexpected number of elements"
