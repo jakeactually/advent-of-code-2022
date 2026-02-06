@@ -15,8 +15,8 @@ main = do
     input <- readFile "input.txt"
     let sensors = sensorsAndBeacons input
     let limits = map (sensorsToLimits sensors) [0..4000000]
-    let beacon = filter ((> 0) . sumDistancesWrapper) limits
-    mapM_ print $ head beacon
+    let beacon = filter ((> 0) . sumDistancesWrapper . fst) $ zip limits [0..4000000]
+    print beacon
 
 sensorsAndBeacons :: String -> [((Int, Int), (Int, Int))]
 sensorsAndBeacons = map (listTo2Pairs . map read . getAllTextMatches . (=~ "-?[0-9]+")) . lines
