@@ -59,6 +59,8 @@ library
       Day16.A
       Day16.B
       Day16.Util
+      Day17.A
+      Day17.B
       Lib
   other-modules:
       Paths_aoc2022

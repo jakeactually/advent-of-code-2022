@@ -34,6 +34,8 @@ import qualified Day15.A
 import qualified Day15.B
 import qualified Day16.A
 import qualified Day16.B
+import qualified Day17.A
+import qualified Day17.B
 
 main :: IO ()
 main = do
@@ -74,4 +76,6 @@ main = do
         runDay "15" "b" = setCurrentDirectory "src/Day15" >> Day15.B.main
         runDay "16" "a" = setCurrentDirectory "src/Day16" >> Day16.A.main
         runDay "16" "b" = setCurrentDirectory "src/Day16" >> Day16.B.main
+        runDay "17" "a" = setCurrentDirectory "src/Day17" >> Day17.A.main
+        runDay "17" "b" = setCurrentDirectory "src/Day17" >> Day17.B.main
         runDay _ _ = putStrLn "Invalid day or part. Use 'stack run <day> <part>'"
