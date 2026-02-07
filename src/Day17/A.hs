@@ -39,10 +39,13 @@ main = do
       finalHeight = tick initialMap initialRock initialRockIndex (cycle directions)
   print finalHeight
 
-moveRock :: Rock -> Char -> Rock
-moveRock rock '<' = if any (\(x, y) -> x == 0) rock then rock else map (\(x, y) -> (x - 1, y)) rock
-moveRock rock '>' = if any (\(x, y) -> x == 6) rock then rock else map (\(x, y) -> (x + 1, y)) rock
-moveRock rock _   = rock
+moveRock :: Map Coord Bool -> Rock -> Char -> Rock
+moveRock m rock '<' = if any (\(x, y) -> x == 0 || Map.findWithDefault False (x - 1, y) m) rock
+  then rock
+  else map (\(x, y) -> (x - 1, y)) rock
+moveRock m rock '>' = if any (\(x, y) -> x == 6 || Map.findWithDefault False (x + 1, y) m) rock
+  then rock
+  else map (\(x, y) -> (x + 1, y)) rock
 
 rockFalls :: Rock -> Rock
 rockFalls rock = map (\(x, y) -> (x, y - 1)) rock
@@ -52,11 +55,11 @@ rockCrashes m rock = any (\coord -> Map.findWithDefault False coord m) rock
 
 tick :: Map Coord Bool -> Rock -> Int -> [Char] -> Int
 tick m rock rockIndex (d:ds) =
-  if rockIndex == 2022
+  if rockIndex == 2023
   then topHeight
-  else Debug.trace (show movedRock) $ tick newMap newRock newRockIndex ds
+  else tick newMap newRock newRockIndex ds
   where
-    movedRock = moveRock rock d
+    movedRock = moveRock m rock d
     fellRock = rockFalls movedRock
     crashes = rockCrashes m fellRock
     newRock = if crashes
