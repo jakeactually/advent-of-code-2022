@@ -1,8 +1,9 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+
 module Day17.A where
 
 import qualified Data.Map as Map
 import Data.Map (Map)
-import qualified Debug.Trace as Debug
 
 type Coord = (Int, Int)
 type Rock = [Coord]
@@ -33,7 +34,7 @@ main :: IO ()
 main = do
   directions <- readFile "input.txt"
   let mapWithFloor = foldr (\x acc -> Map.insert (x, 0) True acc) Map.empty [0..6]
-      initialRock = map (\(x, y) -> (x + 2, y + 4)) (rocks !! 0)
+      initialRock = map (\(x, y) -> (x + 2, y + 4)) (head rocks)
       initialMap = mapWithFloor
       initialRockIndex = 1
       finalHeight = tick initialMap initialRock initialRockIndex (cycle directions)
@@ -48,10 +49,10 @@ moveRock m rock '>' = if any (\(x, y) -> x == 6 || Map.findWithDefault False (x 
   else map (\(x, y) -> (x + 1, y)) rock
 
 rockFalls :: Rock -> Rock
-rockFalls rock = map (\(x, y) -> (x, y - 1)) rock
+rockFalls = map (\(x, y) -> (x, y - 1))
 
 rockCrashes :: Map Coord Bool -> Rock -> Bool
-rockCrashes m rock = any (\coord -> Map.findWithDefault False coord m) rock
+rockCrashes m = any (\coord -> Map.findWithDefault False coord m)
 
 tick :: Map Coord Bool -> Rock -> Int -> [Char] -> Int
 tick m rock rockIndex (d:ds) =
@@ -63,10 +64,10 @@ tick m rock rockIndex (d:ds) =
     fellRock = rockFalls movedRock
     crashes = rockCrashes m fellRock
     newRock = if crashes
-      then map (\(x, y) -> (x + 2, y + topHeight + 4)) (rocks !! (mod rockIndex 5))
+      then map (\(x, y) -> (x + 2, y + topHeight + 4)) (rocks !! mod rockIndex 5)
       else fellRock
     newMap = if crashes
-      then foldr (\coord acc -> Map.insert coord True acc) m movedRock
+      then foldr (`Map.insert` True) m movedRock
       else m
     newRockIndex = if crashes
       then rockIndex + 1
