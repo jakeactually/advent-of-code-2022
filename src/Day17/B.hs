@@ -42,16 +42,12 @@ rocks =
 main :: IO ()
 main = do
   directions <- readFile "input.txt"
-  let jetLen = length directions
-      indexedJets = zip (cycle [0 .. jetLen - 1]) (cycle directions)
+  let indexedJets = cycle $ zip [0..] directions
       mapWithFloor = foldr (\x acc -> Map.insert (x, 0) True acc) Map.empty [0..6]
       initialRock = map (\(x, y) -> (x + 2, y + 4)) (head rocks)
       initialMap = mapWithFloor
       initialRockIndex = 1
-      (mbHeight, _) = tick jetLen totalRocks initialMap initialRock initialRockIndex indexedJets Map.empty
-      finalHeight = case mbHeight of
-        Just h -> h
-        Nothing -> error "expected cycle or completion"
+      (finalHeight, _) = tick totalRocks initialMap initialRock initialRockIndex indexedJets Map.empty
   print finalHeight
 
 moveRock :: Map Coord Bool -> Rock -> Char -> Rock
@@ -70,16 +66,15 @@ rockCrashes m = any (\coord -> Map.findWithDefault False coord m)
 
 tick
   :: Int
-  -> Int
   -> Map Coord Bool
   -> Rock
   -> Int
   -> [(Int, Char)]
   -> Map StateKey StateValue
-  -> (Maybe Int, Map StateKey StateValue)
-tick jetLen total m rock rockIndex ((jetI, d) : ds) states =
+  -> (Int, Map StateKey StateValue)
+tick total m rock rockIndex ((jetI, d) : ds) states =
   if rockIndex == total + 1
-  then (Just topHeight, states)
+  then (topHeight, states)
   else
     let movedRock = moveRock m rock d
         fellRock = rockFalls movedRock
@@ -99,7 +94,7 @@ tick jetLen total m rock rockIndex ((jetI, d) : ds) states =
          let stateKey = (jetI, (rockIndex - 1) `mod` 5, minimum (map fst movedRock))
              stateVal = (rockIndex, currentHeight)
              states' = Map.insert stateKey stateVal states
-             go = tick jetLen total newMap newRock newRockIndex ds
+             go = tick total newMap newRock newRockIndex ds
          in case Map.lookup stateKey states of
               Just (prevRock, prevHeight) ->
                 let rcycle = rockIndex - prevRock
@@ -107,9 +102,9 @@ tick jetLen total m rock rockIndex ((jetI, d) : ds) states =
                     diff = total - rockIndex - 1
                     (more, remain) = diff `divMod` rcycle
                 in if remain == 0
-                   then (Just (hcycle * more + currentHeight), states)
+                   then (hcycle * more + currentHeight, states)
                    else go states'
               Nothing -> go (Map.insert stateKey stateVal states)
-       else tick jetLen total newMap newRock newRockIndex ds states
+       else tick total newMap newRock newRockIndex ds states
   where
     topHeight = maximum (map snd (Map.keys m))
