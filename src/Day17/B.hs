@@ -47,7 +47,7 @@ main = do
       initialRock = map (\(x, y) -> (x + 2, y + 4)) (head rocks)
       initialMap = mapWithFloor
       initialRockIndex = 1
-      (finalHeight, _) = tick totalRocks initialMap initialRock initialRockIndex indexedJets Map.empty
+      (finalHeight, _) = tick initialMap initialRock initialRockIndex indexedJets Map.empty
   print finalHeight
 
 moveRock :: Map Coord Bool -> Rock -> Char -> Rock
@@ -64,47 +64,50 @@ rockFalls = map (\(x, y) -> (x, y - 1))
 rockCrashes :: Map Coord Bool -> Rock -> Bool
 rockCrashes m = any (\coord -> Map.findWithDefault False coord m)
 
+-- One physics step: apply jet, fall, check crash. Returns (crashed, landedRock, newMap, height, nextRock, nextRockIndex).
+step
+  :: Map Coord Bool
+  -> Rock
+  -> Int
+  -> Char
+  -> (Bool, Rock, Map Coord Bool, Int, Rock, Int)
+step m rock rockIndex d =
+  let movedRock = moveRock m rock d
+      fellRock = rockFalls movedRock
+      crashed = rockCrashes m fellRock
+      newMap = if crashed then foldr (`Map.insert` True) m movedRock else m
+      currentHeight = maximum (map snd (Map.keys newMap))
+      nextRock = if crashed
+        then map (\(x, y) -> (x + 2, y + currentHeight + 4)) (rocks !! mod rockIndex 5)
+        else fellRock
+      nextRockIndex = if crashed then rockIndex + 1 else rockIndex
+  in (crashed, movedRock, newMap, currentHeight, nextRock, nextRockIndex)
+
+handleCycleDetection :: Int -> Int -> Map StateKey StateValue -> (Int,  Int) -> Maybe (Int, Map StateKey StateValue)
+handleCycleDetection currentHeight rockIndex st (prevRock, prevHeight) =
+  let rcycle = rockIndex - prevRock
+      hcycle = currentHeight - prevHeight
+      (more, remain) = (totalRocks - rockIndex - 1) `divMod` rcycle
+  in if remain == 0
+     then Just (hcycle * more + currentHeight, st)
+     else Nothing
+
 tick
-  :: Int
-  -> Map Coord Bool
+  :: Map Coord Bool
   -> Rock
   -> Int
   -> [(Int, Char)]
   -> Map StateKey StateValue
   -> (Int, Map StateKey StateValue)
-tick total m rock rockIndex ((jetI, d) : ds) states =
-  if rockIndex == total + 1
-  then (topHeight, states)
-  else
-    let movedRock = moveRock m rock d
-        fellRock = rockFalls movedRock
-        crashes = rockCrashes m fellRock
-        currentHeight = maximum (map snd (Map.keys (if crashes then foldr (`Map.insert` True) m movedRock else m)))
-        newRock = if crashes
-          then map (\(x, y) -> (x + 2, y + currentHeight + 4)) (rocks !! mod rockIndex 5)
-          else fellRock
-        newMap = if crashes
-          then foldr (`Map.insert` True) m movedRock
-          else m
-        newRockIndex = if crashes
-          then rockIndex + 1
-          else rockIndex
-    in if crashes
-       then
-         let stateKey = (jetI, (rockIndex - 1) `mod` 5, minimum (map fst movedRock))
-             stateVal = (rockIndex, currentHeight)
-             states' = Map.insert stateKey stateVal states
-             go = tick total newMap newRock newRockIndex ds
-         in case Map.lookup stateKey states of
-              Just (prevRock, prevHeight) ->
-                let rcycle = rockIndex - prevRock
-                    hcycle = currentHeight - prevHeight
-                    diff = total - rockIndex - 1
-                    (more, remain) = diff `divMod` rcycle
-                in if remain == 0
-                   then (hcycle * more + currentHeight, states)
-                   else go states'
-              Nothing -> go (Map.insert stateKey stateVal states)
-       else tick total newMap newRock newRockIndex ds states
+tick m rock rockIndex ((jetI, d) : ds) states
+  | rockIndex == totalRocks = (maximum (map snd (Map.keys m)), states)
+  | not crashed = tick newMap nextRock nextRockIndex ds states
+  | otherwise = onLand states
   where
-    topHeight = maximum (map snd (Map.keys m))
+    (crashed, movedRock, newMap, currentHeight, nextRock, nextRockIndex) = step m rock rockIndex d
+    stateKey = (jetI, (rockIndex - 1) `mod` 5, minimum (map fst movedRock))
+    stateVal = (rockIndex, currentHeight)
+    states' = Map.insert stateKey stateVal states
+    onLand st = case Map.lookup stateKey st >>= handleCycleDetection currentHeight rockIndex st of
+      Just result -> result
+      Nothing -> tick newMap nextRock nextRockIndex ds states'
