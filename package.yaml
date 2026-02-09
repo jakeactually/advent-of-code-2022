@@ -28,6 +28,7 @@ dependencies:
 - parsec
 - mtl
 - regex-pcre
+- split
 
 ghc-options:
 - -Wall

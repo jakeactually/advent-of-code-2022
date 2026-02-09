@@ -79,6 +79,7 @@ library
     , mtl
     , parsec
     , regex-pcre
+    , split
     , text
   default-language: Haskell2010
 
@@ -100,6 +101,7 @@ executable aoc2022-exe
     , mtl
     , parsec
     , regex-pcre
+    , split
     , text
   default-language: Haskell2010
 
@@ -122,5 +124,6 @@ test-suite aoc2022-test
     , mtl
     , parsec
     , regex-pcre
+    , split
     , text
   default-language: Haskell2010
