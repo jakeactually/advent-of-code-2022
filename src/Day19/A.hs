@@ -58,7 +58,10 @@ runBlueprint minutes bp =
         initialWalkers = [ Walker invStart robsStart newTgt | newTgt <- possibleTargets ]
         
         loop 0 ws = ws
-        loop m ws = loop (m - 1) (S.toList . S.fromList $ concatMap (stepWalker maxC bp) ws)
+        loop m ws = 
+            let currentMaxGeodes = maximum (0 : map (\w -> M.findWithDefault 0 Geode (inventory w)) ws)
+                filteredWs = filter (\w -> M.findWithDefault 0 Geode (inventory w) >= currentMaxGeodes) ws
+            in loop (m - 1) (S.toList . S.fromList $ concatMap (stepWalker maxC bp) filteredWs)
         
         finalWalkers = loop minutes initialWalkers
         maxGeodes = maximum (0 : map (\w -> M.findWithDefault 0 Geode (inventory w)) finalWalkers)
