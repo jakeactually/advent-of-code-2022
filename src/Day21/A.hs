@@ -35,8 +35,19 @@ parseLine line =
 parseInput :: String -> Map String Expr
 parseInput = Map.fromList . map parseLine . lines
 
+getValue :: Map String Expr -> String -> Int
+getValue ctx key = eval (ctx Map.! key)
+  where
+    eval :: Expr -> Int
+    eval (Val v) = v
+    eval (Var k) = getValue ctx k
+    eval (Sum a b) = eval a + eval b
+    eval (Sub a b) = eval a - eval b
+    eval (Mul a b) = eval a * eval b
+    eval (Div a b) = eval a `div` eval b
+
 main :: IO ()
 main = do
   content <- readFile "input.txt"
   let parsedMap = parseInput content
-  print $ Map.lookup "root" parsedMap
+  print $ getValue parsedMap "root"
