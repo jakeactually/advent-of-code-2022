@@ -29,13 +29,6 @@ mkNodes xs = do
 
   return nodesList
 
-toList :: Int -> Node s a -> ST s [a]
-toList 0 _ = return []
-toList n (Node ref) = do
-  NodeData v _ r <- readSTRef ref
-  rest <- toList (n - 1) r
-  return (v : rest)
-
 moveRight :: Node s a -> ST s ()
 moveRight node@(Node refA) = do
   NodeData vA lNode@(Node refL) rNode@(Node refB) <- readSTRef refA
@@ -68,17 +61,17 @@ solve numbers = runST $ do
     _ -> do
       forM_ nodes $ \node@(Node ref) -> do
         NodeData v _ _ <- readSTRef ref
-        if v < 0 then
-          replicateM_ (abs v `rem` (n - 1)) (moveLeft node)
-        else if v > 0 then
-          replicateM_ (v `rem` (n - 1)) (moveRight node)
-        else
-          return ()
+        if v < 0
+          then replicateM_ (abs v `rem` (n - 1)) (moveLeft node)
+          else when (v > 0) $ replicateM_ (v `rem` (n - 1)) (moveRight node)
 
-      zeroNodes <- filterM (\(Node ref) -> do
-          NodeData v _ _ <- readSTRef ref
-          return (v == 0)
-        ) nodes
+      zeroNodes <-
+        filterM
+          ( \(Node ref) -> do
+              NodeData v _ _ <- readSTRef ref
+              return (v == 0)
+          )
+          nodes
 
       let z = head zeroNodes
       (Node ref1) <- stepRight (1000 `mod` n) z
