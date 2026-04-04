@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Day20.A (main) where
+module Day20.B (main) where
 
 import Control.Monad
 import Control.Monad.ST
@@ -54,7 +54,7 @@ stepRight k (Node ref) = do
 
 solve :: [Int] -> [Int]
 solve numbers = runST $ do
-  nodes <- mkNodes numbers
+  nodes <- concat . replicate 10 <$> mkNodes (map (* 811589153) numbers)
   let n = length numbers
   case nodes of
     [] -> return []
