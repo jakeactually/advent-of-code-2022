@@ -53,13 +53,19 @@ moveLeft (Node refA) = do
   NodeData _ lNode _ <- readSTRef refA
   moveRight lNode
 
+stepRight :: Int -> Node s a -> ST s (Node s a)
+stepRight 0 node = return node
+stepRight k (Node ref) = do
+  NodeData _ _ r <- readSTRef ref
+  stepRight (k - 1) r
+
 solve :: [Int] -> [Int]
 solve numbers = runST $ do
   nodes <- mkNodes numbers
   let n = length numbers
   case nodes of
     [] -> return []
-    (headNode : _) -> do
+    _ -> do
       forM_ nodes $ \node@(Node ref) -> do
         NodeData v _ _ <- readSTRef ref
         if v < 0 then
@@ -68,7 +74,21 @@ solve numbers = runST $ do
           replicateM_ (v `rem` (n - 1)) (moveRight node)
         else
           return ()
-      toList n headNode
+
+      zeroNodes <- filterM (\(Node ref) -> do
+          NodeData v _ _ <- readSTRef ref
+          return (v == 0)
+        ) nodes
+
+      let z = head zeroNodes
+      (Node ref1) <- stepRight (1000 `mod` n) z
+      NodeData v1 _ _ <- readSTRef ref1
+      (Node ref2) <- stepRight (2000 `mod` n) z
+      NodeData v2 _ _ <- readSTRef ref2
+      (Node ref3) <- stepRight (3000 `mod` n) z
+      NodeData v3 _ _ <- readSTRef ref3
+
+      return [v1, v2, v3]
 
 main :: IO ()
 main = do
