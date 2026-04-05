@@ -37,27 +37,25 @@ parseLine line =
 parseInput :: String -> Map String Expr
 parseInput = Map.fromList . map parseLine . lines
 
-getValue :: Map String Expr -> String -> Int
-getValue ctx key = eval (ctx Map.! key)
-  where
-    eval :: Expr -> Int
-    eval (Val v) = v
-    eval (Var k) = getValue ctx k
-    eval (Sum a b) = eval a + eval b
-    eval (Sub a b) = eval a - eval b
-    eval (Mul a b) = eval a * eval b
-    eval (Div a b) = eval a `div` eval b
 
 getFullExpr :: Map String Expr -> String -> Expr
 getFullExpr ctx key = eval (ctx Map.! key)
   where
     eval :: Expr -> Expr
     eval (Val v) = Val v
-    eval (Var k) = getFullExpr ctx k
-    eval (Sum a b) = Sum (eval a) (eval b)
-    eval (Sub a b) = Sub (eval a) (eval b)
-    eval (Mul a b) = Mul (eval a) (eval b)
-    eval (Div a b) = Div (eval a) (eval b)
+    eval (Var k) = eval (ctx Map.! k)
+    eval (Sum a b) = case (eval a, eval b) of
+                       (Val va, Val vb) -> Val (va + vb)
+                       (sa, sb) -> Sum sa sb
+    eval (Sub a b) = case (eval a, eval b) of
+                       (Val va, Val vb) -> Val (va - vb)
+                       (sa, sb) -> Sub sa sb
+    eval (Mul a b) = case (eval a, eval b) of
+                       (Val va, Val vb) -> Val (va * vb)
+                       (sa, sb) -> Mul sa sb
+    eval (Div a b) = case (eval a, eval b) of
+                       (Val va, Val vb) -> Val (va `div` vb)
+                       (sa, sb) -> Div sa sb
     eval Humn = Humn
 
 prettyPrint :: Expr -> String
@@ -69,9 +67,33 @@ prettyPrint (Mul a b) = "(" ++ prettyPrint a ++ " * " ++ prettyPrint b ++ ")"
 prettyPrint (Div a b) = "(" ++ prettyPrint a ++ " / " ++ prettyPrint b ++ ")"
 prettyPrint Humn = "x"
 
+solve :: Expr -> Int -> Int
+solve Humn target = target
+solve (Sum (Val v) e) target = solve e (target - v)
+solve (Sum e (Val v)) target = solve e (target - v)
+solve (Sub (Val v) e) target = solve e (v - target)
+solve (Sub e (Val v)) target = solve e (target + v)
+solve (Mul (Val v) e) target = solve e (target `div` v)
+solve (Mul e (Val v)) target = solve e (target `div` v)
+solve (Div (Val v) e) target = solve e (v `div` target)
+solve (Div e (Val v)) target = solve e (target * v)
+solve _ _ = error "unsolvable"
+
+solveRoot :: Expr -> Int
+solveRoot (Sum (Val target) e) = solve e target
+solveRoot (Sum e (Val target)) = solve e target
+solveRoot (Sub (Val target) e) = solve e target
+solveRoot (Sub e (Val target)) = solve e target
+solveRoot (Mul (Val target) e) = solve e target
+solveRoot (Mul e (Val target)) = solve e target
+solveRoot (Div (Val target) e) = solve e target
+solveRoot (Div e (Val target)) = solve e target
+solveRoot _ = error "not implemented or unsolvable"
+
 main :: IO ()
 main = do
   content <- readFile "input.txt"
   let parsedMap = parseInput content
-  -- putStrLn $ prettyPrint (getFullExpr parsedMap "root")
-  print $ getValue parsedMap "vmqt"
+  let rootExpr = getFullExpr parsedMap "root"
+  putStrLn $ "Equation: " ++ prettyPrint rootExpr
+  putStrLn $ "Part 2 Answer: " ++ show (solveRoot rootExpr)
