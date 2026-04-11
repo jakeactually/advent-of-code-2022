@@ -1,10 +1,12 @@
 module Day22.A (main) where
 
-import Data.List (unsnoc, foldl')
+import Data.List (foldl', unsnoc)
 import Data.Map (Map, fromList)
 import qualified Data.Map as Map
-import Text.Parsec (char, digit, many1, parse, (<|>))
+import Data.Maybe (fromMaybe)
+import Text.Parsec (char, digit, many1, parse)
 import Text.Parsec.String (Parser)
+import Control.Applicative ((<|>))
 
 data Action = Forward Int | TurnLeft | TurnRight deriving (Show, Eq)
 
@@ -25,10 +27,10 @@ main = do
   let Just (chartLines, pathStr) = unsnoc $ lines file
   let chart = chartLinesToMap $ init chartLines
   let Right path = parse parsePath "" pathStr
-  
+
   let startX = minimum [x | ((x, 0), _) <- Map.toList chart]
   let startState = (startX, 0, R)
-  
+
   let finalState = foldl' (applyAction chart) startState path
   print finalState
   print (score finalState)
@@ -36,36 +38,36 @@ main = do
 applyAction :: Map (Int, Int) Char -> (Int, Int, Dir) -> Action -> (Int, Int, Dir)
 applyAction _ (x, y, dir) TurnLeft = (x, y, turnLeft dir)
 applyAction _ (x, y, dir) TurnRight = (x, y, turnRight dir)
-applyAction chart state (Forward n) = go n state
-  where
-    go 0 st = st
-    go i st =
-      let st'@(x', y', dir') = step chart st
-      in if (x', y') == (fst3 st, snd3 st)
-           then st
-           else go (i - 1) st'
-    fst3 (a, _, _) = a
-    snd3 (_, b, _) = b
+applyAction chart state (Forward n) = foldl (const . step chart) state [1 .. n]
+
+dirDelta :: Dir -> (Int, Int)
+dirDelta U = (0, -1)
+dirDelta R = (1, 0)
+dirDelta D = (0, 1)
+dirDelta L = (-1, 0)
+
+allCoordsInRow :: Map (Int, Int) Char -> Int -> [(Int, Int)]
+allCoordsInRow chart y = [(x', y') | ((x', y'), _) <- Map.toList chart, y' == y]
+
+allCoordsInCol :: Map (Int, Int) Char -> Int -> [(Int, Int)]
+allCoordsInCol chart x = [(x', y') | ((x', y'), _) <- Map.toList chart, x' == x]
+
+wrapPos :: Map (Int, Int) Char -> (Int, Int) -> Dir -> (Int, Int)
+wrapPos chart (_, y) R = minimum $ allCoordsInRow chart y
+wrapPos chart (_, y) L = maximum $ allCoordsInRow chart y
+wrapPos chart (x, _) D = minimum $ allCoordsInCol chart x
+wrapPos chart (x, _) U = maximum $ allCoordsInCol chart x
 
 step :: Map (Int, Int) Char -> (Int, Int, Dir) -> (Int, Int, Dir)
-step chart (x, y, dir) =
-  let (dx, dy) = case dir of
-        U -> (0, -1)
-        R -> (1, 0)
-        D -> (0, 1)
-        L -> (-1, 0)
-      nextPos = (x + dx, y + dy)
-      wrappedPos = case Map.lookup nextPos chart of
-        Just _ -> nextPos
-        Nothing -> case dir of
-          R -> minimum [ (x', y) | ((x', y'), _) <- Map.toList chart, y' == y ]
-          L -> maximum [ (x', y) | ((x', y'), _) <- Map.toList chart, y' == y ]
-          D -> minimum [ (x, y') | ((x', y'), _) <- Map.toList chart, x' == x ]
-          U -> maximum [ (x, y') | ((x', y'), _) <- Map.toList chart, x' == x ]
-  in case Map.lookup wrappedPos chart of
-       Just '.' -> (fst wrappedPos, snd wrappedPos, dir)
-       Just '#' -> (x, y, dir)
-       _ -> error "Should not happen"
+step chart (x, y, dir) = fromMaybe (error "Should not happen") $ do
+  let (dx, dy) = dirDelta dir
+  let nextPos = (x + dx, y + dy)
+  wrappedPos <- (nextPos <$ Map.lookup nextPos chart) <|> pure (wrapPos chart (x, y) dir)
+  tile <- Map.lookup wrappedPos chart
+  pure $ case tile of
+    '.' -> (fst wrappedPos, snd wrappedPos, dir)
+    '#' -> (x, y, dir)
+    _   -> error "Should not happen"
 
 parseAction :: Parser Action
 parseAction =
