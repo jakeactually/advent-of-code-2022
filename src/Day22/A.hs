@@ -1,12 +1,12 @@
 module Day22.A (main) where
 
-import Data.List (foldl', unsnoc)
+import Control.Applicative ((<|>))
+import Data.List (unsnoc)
 import Data.Map (Map, fromList)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
 import Text.Parsec (char, digit, many1, parse)
 import Text.Parsec.String (Parser)
-import Control.Applicative ((<|>))
 
 data Action = Forward Int | TurnLeft | TurnRight deriving (Show, Eq)
 
@@ -67,7 +67,7 @@ step chart (x, y, dir) = fromMaybe (error "Should not happen") $ do
   pure $ case tile of
     '.' -> (fst wrappedPos, snd wrappedPos, dir)
     '#' -> (x, y, dir)
-    _   -> error "Should not happen"
+    _ -> error "Should not happen"
 
 parseAction :: Parser Action
 parseAction =
