@@ -1,5 +1,6 @@
 module Day24.A (main) where
 
+import Control.Monad (guard)
 import Data.Array (Array, (!), listArray)
 import Data.Sequence (Seq ((:<|)), (|>))
 import qualified Data.Sequence as Seq
@@ -13,34 +14,25 @@ data Dir = U | D | L | R deriving (Eq, Show)
 type Blizzard = (Pt, Dir)
 
 parseInput :: String -> (Int, Int, Pt, Pt, [Blizzard])
-parseInput input = case rows of
-  [] -> error "empty input"
-  (topRow : _) ->
-    case (findOpenInRow topRow, findOpenInRow bottomRow) of
-      (Nothing, _) -> error "no entrance found"
-      (_, Nothing) -> error "no goal found"
-      (Just startCol, Just goalCol) ->
-        let start = (0, startCol)
-            goal = (height - 1, goalCol)
-         in (height, width, start, goal, blizzards)
+parseInput input = (height, width, start, goal, makeBlizzards rows)
   where
     rows = lines input
-    height = length rows
-    width = case rows of
-      [] -> 0
-      (topRow : _) -> length topRow
-    bottomRow = case rows of
-      [] -> ""
-      (topRow : restRows) -> foldl (\_ row -> row) topRow restRows
-    findOpenInRow row = case [c | (c, ch) <- zip [0 ..] row, ch == '.'] of
+    (topRow, bottomRow) = (head rows, last rows)
+    (height, width) = (length rows, length topRow)
+    (Just startCol, Just goalCol) = (findOpenInRow topRow, findOpenInRow bottomRow)
+    (start, goal) = ((0, startCol), (height - 1, goalCol))
+
+makeBlizzards :: [String] -> [Blizzard]
+makeBlizzards rows = do   
+  (r, row) <- zip [0 ..] rows
+  (c, ch) <- zip [0 ..] row
+  guard (ch `elem` "^v<>")
+  return ((r, c), toDir ch)
+
+findOpenInRow :: (Num a, Enum a) => [Char] -> Maybe a
+findOpenInRow row = case [c | (c, ch) <- zip [0 ..] row, ch == '.'] of
       [] -> Nothing
       (c : _) -> Just c
-    blizzards =
-      [ ((r, c), toDir ch)
-        | (r, row) <- zip [0 ..] rows,
-          (c, ch) <- zip [0 ..] row,
-          ch `elem` ("^v<>" :: String)
-      ]
 
 toDir :: Char -> Dir
 toDir '^' = U
