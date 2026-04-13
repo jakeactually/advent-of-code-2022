@@ -54,28 +54,16 @@ step (elves, dirs) = (nextElves, drop 1 dirs ++ take 1 dirs)
           | Map.findWithDefault 0 dest destCounts == 1 = Set.insert dest (Set.delete origin acc)
           | otherwise = acc
 
-runSteps :: Int -> (Set Pt, [Dir]) -> Set Pt
-runSteps 0 (elves, _) = elves
-runSteps n state = runSteps (n - 1) (step state)
-
-countEmpty :: Set Pt -> Int
-countEmpty elves =
-  if Set.null elves
-    then 0
-    else
-      let xs = map snd (Set.toList elves)
-          ys = map fst (Set.toList elves)
-          minX = minimum xs
-          maxX = maximum xs
-          minY = minimum ys
-          maxY = maximum ys
-          area = (maxX - minX + 1) * (maxY - minY + 1)
-       in area - Set.size elves
+runToFixpoint :: Int -> (Set Pt, [Dir]) -> Int
+runToFixpoint n state@(elves, _) =
+  let nextState@(nextElves, _) = step state
+   in if nextElves == elves
+        then n
+        else runToFixpoint (n + 1) nextState
 
 main :: IO ()
 main = do
   input <- readFile "input.txt"
   let elves = parse input
   let dirs = [N, S, W, E]
-  let elves' = runSteps 10 (elves, dirs)
-  print (countEmpty elves')
+  print (runToFixpoint 1 (elves, dirs))
