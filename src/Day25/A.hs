@@ -5,7 +5,7 @@ main = do
   content <- readFile "input.txt"
   let theLines = lines content
   -- mapM_ (print . wordToNumber) theLines
-  print $ sum $ map wordToNumber theLines
+  print $ encode $ sum $ map wordToNumber theLines
 
 charToNumber :: Char -> Int
 charToNumber chr = case chr of
@@ -23,3 +23,14 @@ wordToNumber :: String -> Int
 wordToNumber word = sum $ zipWith (*) coeffs powersOf5
   where
     coeffs = map charToNumber $ reverse word
+
+-- https://www.reddit.com/r/adventofcode/comments/zur1an/comment/jmfi54t/
+
+encode :: Int -> String
+encode 0 = ""
+encode number = encode nextNumber ++ [chr]
+  where
+    chrIdx = (number + 2) `mod` 5
+    chr = "=-012" !! chrIdx
+    carry = if chrIdx < 2 then 1 else 0
+    nextNumber = number `div` 5 + carry
