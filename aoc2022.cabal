@@ -75,6 +75,8 @@ library
       Day23.B
       Day24.A
       Day24.B
+      Day25.A
+      Day25.B
       Lib
   other-modules:
       Paths_aoc2022
